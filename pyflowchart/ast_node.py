@@ -8,9 +8,8 @@ license that can be found in the LICENSE file.
 """
 
 import _ast
+import ast
 from typing import List, Tuple
-
-import astunparse
 
 from pyflowchart.node import *
 
@@ -30,7 +29,7 @@ class AstNode(Node):
         """
         self.ast_object (_ast.AST) back to Python source code
         """
-        return astunparse.unparse(self.ast_object).strip()
+        return ast.unparse(self.ast_object).strip()
 
 
 class AstConditionNode(AstNode, ConditionNode):
@@ -52,7 +51,8 @@ class AstConditionNode(AstNode, ConditionNode):
         cond_expr returns the condition expression of if|while|for sentence.
         """
         # XXX: the extra cost is too big
-        source = astunparse.unparse(self.ast_object)
+        print(self.ast_object)
+        source = ast.unparse(self.ast_object)
         loop_statement = source.strip()
         lines = loop_statement.splitlines()
         if len(lines) >= 1:
@@ -103,7 +103,8 @@ class FunctionDefArgsInput(AstNode, InputOutputNode):
 
     def __init__(self, ast_function_def: _ast.FunctionDef, **kwargs):
         AstNode.__init__(self, ast_function_def, **kwargs)
-        InputOutputNode.__init__(self, InputOutputNode.INPUT, self.func_args_str())
+        InputOutputNode.__init__(
+            self, InputOutputNode.INPUT, self.func_args_str())
 
     def func_args_str(self):
         # TODO(important): handle defaults, vararg, kwonlyargs, kw_defaults, kwarg
@@ -183,11 +184,11 @@ class LoopCondition(AstConditionNode):
         try:
             loop_body = self.connection_yes
             one_line_body = isinstance(loop_body, CondYN) and \
-                            isinstance(loop_body.sub, Node) and \
-                            not isinstance(loop_body.sub, NodesGroup) and \
-                            not isinstance(loop_body.sub, ConditionNode) and \
-                            len(loop_body.sub.connections) == 1 and \
-                            loop_body.sub.connections[0] == self
+                isinstance(loop_body.sub, Node) and \
+                not isinstance(loop_body.sub, NodesGroup) and \
+                not isinstance(loop_body.sub, ConditionNode) and \
+                len(loop_body.sub.connections) == 1 and \
+                loop_body.sub.connections[0] == self
         except Exception as e:
             print(e)
         return one_line_body
@@ -275,7 +276,8 @@ class Loop(NodesGroup, AstNode):
                 cond = self.cond_node
                 body = self.cond_node.connection_yes.sub
 
-                simplified = OperationNode(f'{body.node_text} while {cond.node_text.lstrip("for").lstrip("while")}')
+                simplified = OperationNode(
+                    f'{body.node_text} while {cond.node_text.lstrip("for").lstrip("while")}')
 
                 simplified.node_name = self.head.node_name
                 self.head = simplified
@@ -305,10 +307,10 @@ class IfCondition(AstConditionNode):
         try:
             yes = self.connection_yes
             one_line_body = isinstance(yes, CondYN) and \
-                            isinstance(yes.sub, Node) and \
-                            not isinstance(yes.sub, NodesGroup) and \
-                            not isinstance(yes.sub, ConditionNode) and \
-                            not yes.sub.connections
+                isinstance(yes.sub, Node) and \
+                not isinstance(yes.sub, NodesGroup) and \
+                not isinstance(yes.sub, ConditionNode) and \
+                not yes.sub.connections
         except Exception as e:
             print(e)
         return one_line_body
@@ -327,7 +329,7 @@ class IfCondition(AstConditionNode):
         try:
             no = self.connection_no
             no_else = isinstance(no, CondYN) and \
-                      not no.sub
+                not no.sub
         except Exception as e:
             print(e)
         return no_else
@@ -420,7 +422,8 @@ class If(NodesGroup, AstNode):
                 cond = self.cond_node
                 body = self.cond_node.connection_yes.sub
 
-                simplified = OperationNode(f'{body.node_text} if {cond.node_text.lstrip("if")}')
+                simplified = OperationNode(
+                    f'{body.node_text} if {cond.node_text.lstrip("if")}')
 
                 simplified.node_name = self.head.node_name
                 self.head = simplified
@@ -485,7 +488,8 @@ class BreakContinueSubroutine(AstNode, SubroutineNode):
 
     # TODO: Including information about the LoopCondition that is to be break/continue.
 
-    def __init__(self, ast_break_continue: _ast.stmt, **kwargs):  # Break & Continue is subclass of stmt
+    # Break & Continue is subclass of stmt
+    def __init__(self, ast_break_continue: _ast.stmt, **kwargs):
         AstNode.__init__(self, ast_break_continue, **kwargs)
         SubroutineNode.__init__(self, self.ast_to_source())
 
@@ -501,7 +505,8 @@ class YieldOutput(AstNode, InputOutputNode):
 
     def __init__(self, ast_return: _ast.Return, **kwargs):
         AstNode.__init__(self, ast_return, **kwargs)
-        InputOutputNode.__init__(self, InputOutputNode.OUTPUT, self.ast_to_source())
+        InputOutputNode.__init__(
+            self, InputOutputNode.OUTPUT, self.ast_to_source())
 
 
 ##############
@@ -515,7 +520,8 @@ class ReturnOutput(AstNode, InputOutputNode):
 
     def __init__(self, ast_return: _ast.Return, **kwargs):
         AstNode.__init__(self, ast_return, **kwargs)
-        InputOutputNode.__init__(self, InputOutputNode.OUTPUT, self.ast_to_source().lstrip("return"))
+        InputOutputNode.__init__(
+            self, InputOutputNode.OUTPUT, self.ast_to_source().lstrip("return"))
 
 
 class ReturnEnd(AstNode, EndNode):
@@ -525,7 +531,8 @@ class ReturnEnd(AstNode, EndNode):
 
     def __init__(self, ast_return: _ast.Return, **kwargs):
         AstNode.__init__(self, ast_return, **kwargs)
-        EndNode.__init__(self, "function return")  # TODO: the returning function name
+        # TODO: the returning function name
+        EndNode.__init__(self, "function return")
 
 
 class Return(NodesGroup, AstNode):
@@ -612,7 +619,8 @@ __ctrl_stmts = {
 }
 
 # merge dict: PEP448
-__special_stmts = {**__func_stmts, **__cond_stmts, **__loop_stmts, **__ctrl_stmts}
+__special_stmts = {**__func_stmts, **
+                   __cond_stmts, **__loop_stmts, **__ctrl_stmts}
 
 
 class ParseProcessGraph(NodesGroup):
@@ -649,7 +657,8 @@ def parse(ast_list: List[_ast.AST], **kwargs) -> ParseProcessGraph:
         # special case: special stmt as a expr value. e.g. function call
         if type(ast_object) == _ast.Expr:
             try:
-                ast_node_class = __special_stmts.get(type(ast_object.value), CommonOperation)
+                ast_node_class = __special_stmts.get(
+                    type(ast_object.value), CommonOperation)
             except AttributeError:
                 # ast_object has no value attribute
                 ast_node_class = CommonOperation
